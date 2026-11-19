@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 8px 16px; font: 16px/1.6 "DejaVu Serif", serif; background: #fff; color: #111; }
+  h2 { font: bold 14px sans-serif; margin: 0 0 8px; }
+  #p { width: 320px; height: 160px; position: relative; border-left: 1px solid #ccc; }
+  #p::after { content: ""; position: absolute; left: 320px; top: -4px; bottom: -4px; border-left: 2px solid #d00; }
+  #p span { position: absolute; white-space: pre; }
+</style></head><body>
+<h2 id="h"></h2><div id="p"></div>
+<script>
+const v = location.hash.slice(1);
+document.getElementById('h').textContent = v === 'master' ? 'master (48ebb55)' : 'with the proposed fix';
+const text = "In olden times when wishing still helped one, there lived a king whose daughters were all beautiful; and the youngest was so beautiful that the sun itself, which has seen so much, was astonished whenever it shone in her face.";
+const load = (f) => new Promise(r => { const s = document.createElement('script'); s.src = `${v}/${f}`; s.onload = r; document.head.appendChild(s); });
+(async () => {
+  for (const f of ['linked-list.js', 'linebreak.js', 'hypher.js', 'en-us.js', 'formatter.js']) await load(f);
+  const p = document.getElementById('p');
+  const m = document.createElement('span'); m.style.visibility = 'hidden'; p.appendChild(m);
+  const measure = s => { m.textContent = s; return m.getBoundingClientRect().width; };
+  const nodes = Typeset.formatter(measure).justify(text); m.remove();
+  const breaks = Typeset.linebreak(nodes, [320], { tolerance: 3 });
+  let start = 0, y = 0;
+  const add = (t, x) => { const s = document.createElement('span'); s.textContent = t; s.style.left = x + 'px'; s.style.top = y + 'px'; p.appendChild(s); };
+  for (let i = 1; i < breaks.length; i++) {
+    const { position, ratio } = breaks[i];
+    while (nodes[start].type !== 'box') start++;
+    let x = 0;
+    nodes.slice(start, position + 1).forEach((n, idx, arr) => {
+      if (n.type === 'box') { add(n.value, x); x += n.width; }
+      else if (n.type === 'glue') x += n.width + ratio * (ratio < 0 ? n.shrink : n.stretch);
+      else if (n.type === 'penalty' && n.width && idx === arr.length - 1) add('-', x);
+    });
+    start = position; y += 25.6;
+  }
+})();
+</script></body></html>
